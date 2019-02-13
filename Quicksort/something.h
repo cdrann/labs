@@ -14,12 +14,12 @@ void quick_sort(int *array, int left, int right) {
     int i = left;
     int j = right;
     while (i <= j) {
-        while (*(array + i) < x) {
+        while (*(array + i) < x) 
             i++;
-        }
-        while (*(array + j) > x) {
+        
+        while (*(array + j) > x) 
             j--;
-        }
+        
         if (i <= j) {
             int temp = *(array + i);
             *(array + i) = *(array + j);
@@ -28,12 +28,12 @@ void quick_sort(int *array, int left, int right) {
             j--;
         }
     }
-    if (j > left) {
+    if (j > left) 
         quick_sort(array, left, j);
-    }
-    if (i < right) {
+   
+    if (i < right) 
         quick_sort(array, i, right);
-    }
+    
 } 
 
 #endif
