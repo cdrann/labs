@@ -33,7 +33,7 @@ typedef struct vertex {
 	unsigned long long len;
 	int single_way;
 	int visited;
-	int parent;
+	int parent[5001]; //TODO ARRAY 
 } node;
 
 int **create_matrix(int num_vertexes) {
@@ -80,7 +80,8 @@ node *create_node(int num_vertexes) {
 	for (int i = 0; i < num_vertexes; i++) {
 		vertex[i].len = INFINITY;
 		vertex[i].visited = 0;
-		vertex[i].parent = -1;
+		for(int j = 0; j < 5001; j++)
+			vertex[i].parent[j] = -1;
 	}
 
 	return vertex;
@@ -101,16 +102,23 @@ void algo_dijkstra(int num_vertexes, int **matrix, node *vertexes, int head, int
 		for (int k = 0; k < num_vertexes; ++k) {
 			if (k == v) { continue; }
 			if (matrix[v][k] != INFINITY) {
-				if ((vertexes[v].len + (unsigned long long)matrix[v][k] < vertexes[k].len) 
+				if ((vertexes[v].len + (unsigned long long)matrix[v][k] <= vertexes[k].len) 
 																			|| (vertexes[k].len == INFINITY)) {
 
 					vertexes[k].len = vertexes[v].len + (unsigned long long)matrix[v][k];
-					vertexes[k].parent = v;
 					vertexes[k].single_way = 1;
+					if(vertexes[k].parent == -1) {  //TODO ARRAY FOR PARENTS 
+						vertexes[k].parent[0] = v;
+					}else {
+						//записываем в первую свободную 
+						for(int m = 0; vertexes[k].parent[m] != -1; m++)  {}
+						vertexes[k].parent[m] = v;
+					}
+						
 					continue;
 
-				} else if ((vertexes[v].len + (unsigned long long)matrix[v][k]) == vertexes[k].len)
-					vertexes[k].single_way = 0;
+				} else if ((vertexes[v].len + (unsigned long long)matrix[v][k]) == vertexes[k].len) // TODO DELETE ??
+					vertexes[k].single_way = 0; //путей несколько
 			}
 		}
 	} 
@@ -130,6 +138,7 @@ void print_all_distance(int num_vertexes, FILE *output_file, node *vertexes) {
 		}
 		fprintf(output_file, "%llu ", len); // %I64d
 	}
+	
 	fprintf(output_file, "\n");
 }
 
@@ -144,7 +153,7 @@ void print_path_head_to_tail(int num_vertexes, int **matrix, node *vertexes, int
 
 	for (int i = tail; i != head; i = vertexes[i].parent, ++cntr) {
 		p[cntr] = i + 1;
-		if ((vertexes[i].len > INT_MAX) && (!vertexes[i].single_way)) {
+		if ((vertexes[i].len > INT_MAX) && (!vertexes[i].single_way)) {  //TODO delete second condition ??
 			fprintf(output_file, "overflow"); //длина кратчайшего пути > INT_MAX и путей длины > INT_MAX два или больше
 			exit(0);
 		}
