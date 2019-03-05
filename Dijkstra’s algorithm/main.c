@@ -181,12 +181,14 @@ void algo_dijkstra(graphNode *graph, int head, int num_vertices, int *black) {
 	black[head] = 0;
 	gray[head] = -3;
 
-	listTuple *curr = graph->neighbours->next;
-	while (curr != NULL) {
-		gray[curr->nextNode] = curr->lenPath;
-		addParent(curr->nextNode, head, graph);
-		curr = curr->next;
-	}
+	listTuple *curr = graph[head].neighbours->next;
+	while (curr != NULL) { 
+        if (curr->nextNode != head) { 
+            gray[curr->nextNode] = curr->lenPath; 
+            addParent(curr->nextNode, head, graph); 
+        } 
+        curr = curr->next; 
+    }
 	int ind;
 	while ((ind = findMinInd(gray, num_vertices)) >= 0) {
 		black[ind] = gray[ind];
@@ -215,14 +217,15 @@ void algo_dijkstra(graphNode *graph, int head, int num_vertices, int *black) {
 					gray[temp->nextNode] = -2;
 				addParent(temp->nextNode, ind, graph);
 				break;
-			default:
-				if (tempLen < gray[temp->nextNode]) {
-					deleteParents(graph, ind);
-					gray[temp->nextNode] = tempLen;
-				}
-				if (tempLen <= gray[temp->nextNode])
-					addParent(temp->nextNode, ind, graph);
-				break;
+			default: 
+            if (tempLen <= gray[temp->nextNode]) { 
+                if (tempLen < gray[temp->nextNode]) { 
+                    deleteParents(graph, temp->nextNode); 
+                    gray[temp->nextNode] = tempLen; 
+                } 
+                addParent(temp->nextNode, ind, graph); 
+            } 
+            break;
 			}
 			temp = temp->next;
 		}
@@ -232,8 +235,8 @@ void algo_dijkstra(graphNode *graph, int head, int num_vertices, int *black) {
 
 void printPath(int head, int tail, graphNode *graph, FILE *output_file) {
 	if (head != tail) {
+		fprintf(output_file, "%d ", tail + 1);
 		printPath(head, graph[tail].parents->next->number, graph, output_file);
-		fprintf(output_file, "%d ", tail +1);
 		if (graph[graph[tail].parents->next->number].parents->next == NULL)
 		{
 			deleteFirstParent(graph, tail);
@@ -244,8 +247,8 @@ void printPath(int head, int tail, graphNode *graph, FILE *output_file) {
 }
 
 void printAllPathsForTail(int head, int tail, graphNode *graph, FILE *output_file) {
-	//no path + overflow
-	if (head == tail) {
+	if (head == tail)
+	{
 		fprintf(output_file, "%d\n", head + 1);
 		exit(0);
 	}
@@ -293,11 +296,10 @@ int main() {
 	}
 
 	int num_vertices, head, tail, num_edges;
-	fscanf(input_file, "%d %d %d %d", &num_vertices, &head, &tail, &num_edges);
-	/*if (fscanf(input_file, "%d %d %d %d", &num_vertices, &head, &tail, &num_edges) == EOF) {
+	if (fscanf(input_file, "%d %d %d %d", &num_vertices, &head, &tail, &num_edges) == EOF) {
 		fprintf(output_file, "bad number of lines");
 		exit(0);
-	}*/
+	}
 	is_bad_input(num_vertices, head, tail, num_edges, output_file);
 	head--;
 	tail--;
@@ -306,7 +308,7 @@ int main() {
 
 	int beg, end;
 	long long len;
-	for (int i = 0; i < num_edges; ++i) {
+	for (int i = 0; i < num_edges; i++) {
 		if (fscanf(input_file, "%d %d %lld", &beg, &end, &len) == EOF) {
 			fprintf(output_file, "bad number of lines");
 			exit(0);
@@ -315,14 +317,14 @@ int main() {
 			fprintf(output_file, "bad length");
 			exit(0);
 		}
-		beg--; 
+		beg--;
 		end--;
 		addEdge(beg, end, len, graphGlob);
 	}
 
 	int *black = (int *)malloc(num_vertices * sizeof(int));
 	algo_dijkstra(graphGlob, head, num_vertices, black);
-
+        
 	printLens(black, num_vertices, output_file);
 	printAllPathsForTail(head, tail, graphGlob, output_file);
 
