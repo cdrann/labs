@@ -1,4 +1,3 @@
-#define _CRT_SECURE_NO_WARNINGS
 #include <stdio.h>
 #include <malloc.h>
 #include <stdlib.h>
@@ -11,7 +10,7 @@ void BadInput(int num_vertices, int num_edges, FILE *fout) {
 		fputs("bad number of vertices", fout);
 		exit(0);
 	}
-	if (num_edges < 0 || num_edges > (num_vertices * (num_vertices - 1)) / 2) {
+	if (num_edges < 0 || num_edges >(num_vertices * (num_vertices - 1)) / 2) {
 		fputs("bad number of edges", fout);
 		exit(0);
 	}
@@ -26,6 +25,11 @@ void BadInputEdge(int num_vertices, int head, int tail, long long length, FILE *
 		fputs("bad length", fout);
 		exit(0);
 	}
+}
+
+void BadNumLines(FILE *fout) {
+	fputs("bad number of lines", fout);
+	exit(0);
 }
 
 typedef struct MST {
@@ -45,7 +49,19 @@ void push_back(MST *head, int beg, int end) {
 	cur->next->next = NULL;
 }
 
-//void freeMST ()
+void freeMST(MST **head) {
+   MST *cur = *head; 
+   MST *next; 
+  
+   while (cur != NULL)  { 
+       next = cur->next; 
+       free(cur); 
+       cur = next; 
+   } 
+    
+   *head = NULL; 
+}
+
 
 void printMST(MST *head, FILE *output_file) {
 	MST *edge = head;
@@ -55,14 +71,8 @@ void printMST(MST *head, FILE *output_file) {
 	}
 }
 
-typedef struct {
-	int beg;
-	int end;
-	double len;
-} triple;
-
 typedef struct TDSU {
-	struct TDSU *parent; 
+	struct TDSU *parent;
 } TDSU;
 
 TDSU *MakeSets(int num_vertices) {
@@ -90,11 +100,11 @@ TDSU *MergeSets(TDSU *a, TDSU *b) {
 	return a;
 }
 
-void MakeGraph(int edgeID, MST *head, triple *edge) {
-	edge[edgeID].beg++;
-	edge[edgeID].end++;
-	push_back(head, edge[edgeID].beg, edge[edgeID].end);
-}
+typedef struct {
+	int beg;
+	int end;
+	double len;
+} triple;
 
 int Comparator(triple *a, triple *b) {
 	if (a->len > b->len) return 1;
@@ -102,38 +112,13 @@ int Comparator(triple *a, triple *b) {
 	return 0;
 }
 
-int main() {
-	FILE *inputfile = fopen("in.txt", "r");
-	assert(inputfile != NULL);
-	FILE *outputfile = fopen("out.txt", "w");
+void MakeGraph(int edgeID, MST *head, triple *edge) {
+	edge[edgeID].beg++;
+	edge[edgeID].end++;
+	push_back(head, edge[edgeID].beg, edge[edgeID].end);
+}
 
-	unsigned int num_vertices;
-	fscanf(inputfile, "%d", &num_vertices);
-	unsigned int num_edges;
-	fscanf(inputfile, "%d", &num_edges);
-	BadInput(num_vertices, num_edges, outputfile);
-
-	triple *edges = (triple*)malloc(num_edges * sizeof(triple));
-	assert(edges != NULL);
-	for (int i = 0; i < num_edges; i++) {
-		if (fscanf(inputfile, "%d", &edges[i].beg) == EOF) {
-			fputs("bad number of lines", outputfile);
-			exit(0);
-		}
-		if (fscanf(inputfile, "%d", &edges[i].end) == EOF) {
-			fputs("bad number of lines", outputfile);
-			exit(0);
-		}
-		if (fscanf(inputfile, "%lf", &edges[i].len) == EOF) {
-			fputs("bad number of lines", outputfile);
-			exit(0);
-		}
-		BadInputEdge(num_vertices, edges[i].beg, edges[i].end, edges[i].len, outputfile);
-		edges[i].beg--;
-		edges[i].end--;
-	}
-	qsort(edges, num_edges, sizeof(triple), (int(*)(const void*, const void*)) Comparator);
-
+void KruskalMST(int num_vertices, int num_edges, triple *edges, FILE *fout) {
 	TDSU *sets = MakeSets(num_vertices);
 	int num_sets = num_vertices;
 
@@ -147,14 +132,44 @@ int main() {
 
 		MergeSets(FindSet(&sets[edges[i].beg]), FindSet(&sets[edges[i].end]));
 		num_sets--;
-		MakeGraph(i, MinimumSpanningTree, edges); //to the end of list and then print that list
+		MakeGraph(i, MinimumSpanningTree, edges);
 	}
 
 	if (num_sets != 1)
-		fprintf(outputfile, "no spanning tree");
+		fprintf(fout, "no spanning tree");
 	else
-		printMST(MinimumSpanningTree, outputfile);
+		printMST(MinimumSpanningTree, fout);
 
+	freeMST(&MinimumSpanningTree);
+}
+
+int main() {
+	FILE *inputfile = fopen("in.txt", "r");
+	assert(inputfile != NULL);
+	FILE *outputfile = fopen("out.txt", "w");
+
+	unsigned int num_vertices;
+	unsigned int num_edges;
+	fscanf(inputfile, "%d", &num_vertices);
+	fscanf(inputfile, "%d", &num_edges);
+	BadInput(num_vertices, num_edges, outputfile);
+
+	triple *edges = (triple*)malloc(num_edges * sizeof(triple));
+	assert(edges != NULL);
+	for (int i = 0; i < num_edges; i++) {
+		if (fscanf(inputfile, "%d", &edges[i].beg) == EOF
+			|| fscanf(inputfile, "%d", &edges[i].end) == EOF || fscanf(inputfile, "%lf", &edges[i].len) == EOF) {
+			BadNumLines(outputfile);
+		}
+		BadInputEdge(num_vertices, edges[i].beg, edges[i].end, edges[i].len, outputfile);
+		edges[i].beg--;
+		edges[i].end--;
+	}
+	qsort(edges, num_edges, sizeof(triple), (int(*)(const void*, const void*)) Comparator);
+
+	KruskalMST(num_vertices, num_edges, edges, outputfile);
+
+    free(edges);
 	fclose(inputfile);
 	fclose(outputfile);
 	return 0;
