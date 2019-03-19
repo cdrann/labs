@@ -1,119 +1,161 @@
-#include <stdlib.h>
+#define _CRT_SECURE_NO_WARNINGS
 #include <stdio.h>
+#include <malloc.h>
+#include <stdlib.h>
+#include <assert.h>
 #include <limits.h>
 
-void is_bad_input(int num_vertices, int num_edges, FILE *output_file) {
+void BadInput(int num_vertices, int num_edges, FILE *fout) {
+	assert(num_vertices != 1);
 	if (num_vertices < 0 || num_vertices > 5000) {
-		fprintf(output_file, "bad number of vertices");
+		fputs("bad number of vertices", fout);
 		exit(0);
 	}
-	if (num_edges < 0 || num_edges >(num_vertices * (num_vertices - 1)) / 2) {
-		fprintf(output_file, "bad number of edges");
+	if (num_edges < 0 || num_edges > (num_vertices * (num_vertices - 1)) / 2) {
+		fputs("bad number of edges", fout);
 		exit(0);
+	}
+}
+
+void BadInputEdge(int num_vertices, int head, int tail, long long length, FILE *fout) {
+	if (head < 1 || head > num_vertices || tail < 1 || tail > num_vertices) {
+		fputs("bad vertex", fout);
+		exit(0);
+	}
+	if (length < 0 || length > INT_MAX) {
+		fputs("bad length", fout);
+		exit(0);
+	}
+}
+
+typedef struct MST {
+	int beg;
+	int end;
+	struct MST *next;
+} MST;
+
+void push_back(MST *head, int beg, int end) {
+	MST *cur = head;
+	while (cur->next != NULL)
+		cur = cur->next;
+	cur->next = (MST *)malloc(sizeof(MST));
+	assert(cur->next != NULL);
+	cur->next->beg = beg;
+	cur->next->end = end;
+	cur->next->next = NULL;
+}
+
+//void freeMST ()
+
+void printMST(MST *head, FILE *output_file) {
+	MST *edge = head;
+	while (edge->next != NULL) {
+		edge = edge->next;
+		fprintf(output_file, "%d %d\n", edge->beg, edge->end);
 	}
 }
 
 typedef struct {
-	int* Parent;
-	int* Rank;
+	int beg;
+	int end;
+	double len;
+} triple;
+
+typedef struct TDSU {
+	struct TDSU *parent; 
 } TDSU;
 
-//Создает систему непересекающихся множеств, состоящую из всех одноэлементных подмножеств finiteSet
-TDSU* MakeSets(int count) {
-	TDSU* dsu = malloc(sizeof(TDSU));
-	assert(dsu != NULL);
-	dsu->Parent = calloc(count, sizeof(int));
-	assert(dsu->Parent != NULL);
-	for (int element = 0; element < count;
-		++element) {
-		dsu->Parent[element] = element;
-	}
-	dsu->Rank = calloc(count, sizeof(int));
-	assert(dsu->Rank != NULL);
-	return dsu;
+TDSU *MakeSets(int num_vertices) {
+	TDSU *sets = (TDSU*)malloc(num_vertices * sizeof(TDSU));
+	assert(sets != NULL);
+
+	int num_sets = num_vertices;
+	for (int i = 0; i < num_sets; i++)
+		sets[i].parent = &sets[i];
+	return sets;
 }
 
-void DestroySets(TDSU* dsu) {
-	free(dsu->Parent);
-	free(dsu->Rank);
-	free(dsu);
-}
-
-//Возвращает множество из disjointSets, которое содержит element
-int FindSet(TDSU* dsu, int element) {
-	if (element == dsu->Parent[element]) {
-		return element;
-	}
-	dsu->Parent[element] =
-		FindSet(dsu, dsu->Parent[element]);
-	return dsu->Parent[element];
-}
-
-//Преобразует disjointSets, объединяя множества setForX и setForY
-void MergeSets(TDSU* dsu, int setX, int setY) {
-	assert(dsu->Parent[setX] == setX);
-	assert(dsu->Parent[setY] == setY);
-	if (dsu->Rank[setX] > dsu->Rank[setY]) {
-		dsu->Parent[setY] = setX;
-		return;
-	}
-	dsu->Parent[setX] = setY;
-	if (dsu->Rank[setX] == dsu->Rank[setY]) {
-		dsu->Rank[setY] += 1;
+TDSU *FindSet(TDSU *s) {
+	if (s == s->parent)
+		return s;
+	else {
+		TDSU *parent = FindSet(s->parent);
+		s->parent = parent;
+		return parent;
 	}
 }
-/* void KrusalMinimumSpanningTree(graph, weight[]) {
-	sortedEdges = SortAscending(
-		graph.Edges,
-		cmp(left, right) :
-		return weight[left] < weight[right]
-	)
 
-		connectedComponents = MakeSets(graph.Vertices)
+TDSU *MergeSets(TDSU *a, TDSU *b) {
+	a->parent = b;
+	return a;
+}
 
-		treeVertices = graph.Vertices
-		treeEdges = 
-		for (u, v)  sortedEdges :
-	setForU = FindSet(connectedComponents, u)
-		setForV = FindSet(connectedComponents, v)
-		if setForU != setForV :
-			treeEdges += treeEdges
-			MergeSets(connectedComponents, setForU, setForV)
+void MakeGraph(int edgeID, MST *head, triple *edge) {
+	edge[edgeID].beg++;
+	edge[edgeID].end++;
+	push_back(head, edge[edgeID].beg, edge[edgeID].end);
+}
 
-			return MakeGraph(treeVertices, treeEdges)
-
-} */
+int Comparator(triple *a, triple *b) {
+	if (a->len > b->len) return 1;
+	if (a->len < b->len) return -1;
+	return 0;
+}
 
 int main() {
-	FILE *input_file = fopen("in.txt", "r");
-	FILE *output_file = fopen("out.txt", "a");
+	FILE *inputfile = fopen("in.txt", "r");
+	assert(inputfile != NULL);
+	FILE *outputfile = fopen("out.txt", "w");
 
-	if (input_file == NULL) {
-		fputs("no such file", output_file);
-		exit(0);
-	}
+	unsigned int num_vertices;
+	fscanf(inputfile, "%d", &num_vertices);
+	unsigned int num_edges;
+	fscanf(inputfile, "%d", &num_edges);
+	BadInput(num_vertices, num_edges, outputfile);
 
-	int num_vertices, num_edges;
-	fscanf(input_file, "%d %d", &num_vertices, &num_edges);
-	is_bad_input(num_vertices, num_edges, output_file);
-
-	graphNode *graph = createGraph(num_vertices);
-
-	int beg, end;
-	long long len;
+	triple *edges = (triple*)malloc(num_edges * sizeof(triple));
+	assert(edges != NULL);
 	for (int i = 0; i < num_edges; i++) {
-		if (fscanf(input_file, "%d %d %lld", &beg, &end, &len) == EOF) {
-			fprintf(output_file, "bad number of lines");
+		if (fscanf(inputfile, "%d", &edges[i].beg) == EOF) {
+			fputs("bad number of lines", outputfile);
 			exit(0);
 		}
-		if (len > INT_MAX || len < 0) {
-			fprintf(output_file, "bad length");
+		if (fscanf(inputfile, "%d", &edges[i].end) == EOF) {
+			fputs("bad number of lines", outputfile);
 			exit(0);
 		}
-		addEdge(beg, end, len, graph);
+		if (fscanf(inputfile, "%lf", &edges[i].len) == EOF) {
+			fputs("bad number of lines", outputfile);
+			exit(0);
+		}
+		BadInputEdge(num_vertices, edges[i].beg, edges[i].end, edges[i].len, outputfile);
+		edges[i].beg--;
+		edges[i].end--;
+	}
+	qsort(edges, num_edges, sizeof(triple), (int(*)(const void*, const void*)) Comparator);
+
+	TDSU *sets = MakeSets(num_vertices);
+	int num_sets = num_vertices;
+
+	MST *MinimumSpanningTree = (MST *)malloc(sizeof(MST));
+	assert(MinimumSpanningTree != NULL);
+	MinimumSpanningTree->next = NULL;
+
+	for (int i = 0; num_sets > 1 && i < num_edges; i++) { // => while!! -> (!= && > && <) 
+		if (FindSet(&sets[edges[i].beg]) == FindSet(&sets[edges[i].end]))
+			continue;
+
+		MergeSets(FindSet(&sets[edges[i].beg]), FindSet(&sets[edges[i].end]));
+		num_sets--;
+		MakeGraph(i, MinimumSpanningTree, edges); //to the end of list and then print that list
 	}
 
-	fclose(input_file);
-	fclose(output_file);
+	if (num_sets != 1)
+		fprintf(outputfile, "no spanning tree");
+	else
+		printMST(MinimumSpanningTree, outputfile);
+
+	fclose(inputfile);
+	fclose(outputfile);
 	return 0;
 }
