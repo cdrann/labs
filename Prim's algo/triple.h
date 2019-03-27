@@ -5,8 +5,6 @@ typedef struct triple {
 	int beg;
 	int end;
 	int len;
-
-	struct triple *next;
 } triple;
 
 triple *TripleConstructor(triple *tr, int j, int beg, int end, int len) {
